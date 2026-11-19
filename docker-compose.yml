@@ -1,9 +1,11 @@
-﻿services:
+services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
-      target: development
+      # Canlıda Vite dev server çalıştırma; HMR WebSocket'i gerekmez.
+      # Production stage, derlenmiş Nitro Node server'ını çalıştırır.
+      target: production
     container_name: tarcinyemek
     restart: unless-stopped
     ports:
@@ -29,8 +31,6 @@
       MAIL_FROM: ${MAIL_FROM:-}
       MAIL_TO: ${MAIL_TO:-}
     volumes:
-      - .:/app
-      - /app/node_modules
       - tarcin_mail_data:/data
 
 volumes:
