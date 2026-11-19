@@ -25,6 +25,9 @@ export default defineConfig({
       // Nginx Proxy Manager domain üzerinden Vite dev server'a yönlendiriyor.
       // IP/localhost erişimi de geliştirme ve sağlık kontrolleri için açık kalır.
       allowedHosts: ["tarcinyemek.com", "www.tarcinyemek.com"],
+      // Canlı reverse-proxy arkasında HMR WebSocket'i localhost'a yönlenir ve
+      // tarayıcıda SSL/WebSocket hatası üretir. Canlıda dosya izleme gerekmez.
+      hmr: false,
       watch: {
         usePolling: true,
       },
