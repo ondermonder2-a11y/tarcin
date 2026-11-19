@@ -10,6 +10,11 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  // The production Docker image runs .output/server/index.mjs with Node.
+  // Keep Nitro on the Node server preset instead of Lovable's Cloudflare default.
+  nitro: {
+    preset: "node-server",
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
