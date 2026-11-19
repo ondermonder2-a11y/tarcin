@@ -267,7 +267,9 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
   const migrateLegacyContent = useCallback(async () => {
     if (typeof window === "undefined") return;
 
-    await refresh();
+    // Cache'te revision >= 1 olsa bile ilk açılışta sunucudan mutlaka oku.
+    // Aksi halde yeni tarayıcıda varsayılan cache, isLoaded bayrağını kilitleyebilir.
+    await refresh({ force: true });
 
     if (!hasPendingLegacyData()) {
       clearLegacyKeys();
