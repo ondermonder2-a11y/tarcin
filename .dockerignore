@@ -1,0 +1,15 @@
+node_modules
+.git
+.gitignore
+.output
+.tanstack
+.nitro
+.vinxi
+dist
+dist-ssr
+tarcin
+*.log
+.env
+.env.*
+.private
+data
