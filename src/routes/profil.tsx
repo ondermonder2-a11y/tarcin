@@ -20,7 +20,7 @@ export const Route = createFileRoute("/profil")({
 
 function ProfilePage() {
   const { isAuthenticated, isAuthLoaded, changePassword } = useAdminAuth();
-  const { isLoaded, profile, updateProfile, resetToDefaults } = useAppData();
+  const { isLoaded, isSaving, profile, updateProfile, resetToDefaults } = useAppData();
   const [form, setForm] = useState<AdminProfile>(profile);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -33,19 +33,24 @@ function ProfilePage() {
     if (isLoaded) setForm(profile);
   }, [isLoaded, profile]);
 
-  const showToast = (msg: string) => {
-    setNotice(msg);
-    setTimeout(() => setNotice(null), 3500);
+  const showToast = (msg: string, isError = false) => {
+    setNotice(isError ? `⚠ ${msg}` : msg);
+    setTimeout(() => setNotice(null), 4500);
   };
 
   const handleChange = (field: keyof AdminProfile, val: string) => {
     setForm((prev) => ({ ...prev, [field]: val }));
   };
 
-  const handleProfileSubmit = (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile(form);
-    showToast("Profil ve işletme bilgileri başarıyla güncellendi!");
+    const result = await updateProfile(form);
+    showToast(
+      result.success
+        ? "Profil ve işletme bilgileri veritabanına kaydedildi!"
+        : result.error || "Kaydedilemedi. Lütfen tekrar deneyin.",
+      !result.success,
+    );
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -176,9 +181,15 @@ function ProfilePage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm("Tüm site ve menü verilerini orijinal ayarlara sıfırlamak istiyor musunuz?")) {
-                    resetToDefaults();
-                    showToast("Tüm veriler varsayılanlara sıfırlandı!");
+                  if (confirm("Tüm site ve menü verileri veritabanında orijinal ayarlara sıfırlanacak. Emin misiniz?")) {
+                    void resetToDefaults().then((result) =>
+                      showToast(
+                        result.success
+                          ? "Tüm veriler veritabanında varsayılanlara sıfırlandı!"
+                          : result.error || "Sıfırlama yapılamadı.",
+                        !result.success,
+                      ),
+                    );
                   }
                 }}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 px-3.5 py-2 text-xs font-bold text-destructive hover:bg-destructive/10 transition"
@@ -284,10 +295,11 @@ function ProfilePage() {
 
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow hover:bg-primary/90 transition"
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow hover:bg-primary/90 transition disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
-                Profili Kaydet
+                {isSaving ? "Kaydediliyor…" : "Profili Kaydet"}
               </button>
             </form>
 

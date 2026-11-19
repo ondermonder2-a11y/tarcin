@@ -18,6 +18,9 @@ services:
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:-}
       SMTP_SETTINGS_ENCRYPTION_KEY: ${SMTP_SETTINGS_ENCRYPTION_KEY:-}
       SMTP_SETTINGS_FILE: /data/smtp-settings.enc
+      # Site içeriği veritabanı (admin kayıtları buraya yazılır, /data kalıcı biriminde).
+      SITE_CONTENT_DB_FILE: ${SITE_CONTENT_DB_FILE:-/data/site-content.json}
+      SITE_MEDIA_DIR: ${SITE_MEDIA_DIR:-/data/media}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}

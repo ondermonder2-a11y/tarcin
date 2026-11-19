@@ -1,12 +1,34 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  ChefHat, Save, Plus, Trash2, Edit3, Check, Star, User, Phone,
-  Mail, MapPin, Building2, ArrowLeft, RotateCcw, Sparkles, LogOut,
-  Calendar, MessageSquare, Utensils, Shield, KeyRound, CheckCircle2, Image as ImageIcon,
+  ChefHat,
+  Save,
+  Plus,
+  Trash2,
+  Edit3,
+  Check,
+  Star,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  Building2,
+  ArrowLeft,
+  RotateCcw,
+  Sparkles,
+  LogOut,
+  Calendar,
+  MessageSquare,
+  Utensils,
+  Shield,
+  KeyRound,
+  CheckCircle2,
+  Image as ImageIcon,
+  AlertTriangle,
 } from "lucide-react";
 import logoImg from "@/assets/logo.jpg";
 import { AdminLogin } from "@/components/AdminLogin";
+import { uploadSiteImage } from "@/lib/content/upload";
 import {
   useAdminAuth,
   useAppData,
@@ -38,6 +60,8 @@ function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabType>("tabldot");
   const {
     isLoaded,
+    isSaving,
+    error: dataError,
     fixMenu,
     brochure,
     heroSlides,
@@ -53,11 +77,19 @@ function AdminPage() {
     resetToDefaults,
   } = useAppData();
 
-  const [notification, setNotification] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ text: string; error: boolean } | null>(null);
 
-  const showNotice = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3500);
+  const showNotice = (text: string, isError = false) => {
+    setNotification({ text, error: isError });
+    setTimeout(() => setNotification(null), 4500);
+  };
+
+  // Kayıt sunucudaki veritabanına yazıldıktan sonra bildirir; hata kırmızı gösterilir.
+  const saveNotice = (result: { success: boolean; error?: string }, successText: string) => {
+    showNotice(
+      result.success ? successText : result.error || "Kaydedilemedi. Lütfen tekrar deneyin.",
+      !result.success,
+    );
   };
 
   if (!isAuthLoaded) {
@@ -104,14 +136,18 @@ function AdminPage() {
                 <span className="block font-black text-base tracking-wide leading-tight text-foreground">
                   TARÇIN
                 </span>
-                <span className="block text-[11px] font-semibold text-primary">
-                  Yönetim Paneli
-                </span>
+                <span className="block text-[11px] font-semibold text-primary">Yönetim Paneli</span>
               </div>
             </Link>
           </div>
 
           <div className="flex items-center gap-3">
+            {isSaving && (
+              <span className="hidden items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary sm:inline-flex">
+                <Save className="h-3.5 w-3.5 animate-pulse" />
+                Kaydediliyor…
+              </span>
+            )}
             <Link
               to="/"
               aria-label="Ana siteyi aç"
@@ -127,7 +163,10 @@ function AdminPage() {
               className="flex items-center gap-2 rounded-xl bg-accent/60 px-3 py-1.5 text-xs font-bold text-accent-foreground transition hover:bg-accent"
             >
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground font-extrabold text-xs">
-                {profile.fullName.split(" ").map((n) => n[0]).join("")}
+                {profile.fullName
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
               </div>
               <span className="hidden sm:inline">{profile.fullName}</span>
             </button>
@@ -146,9 +185,19 @@ function AdminPage() {
 
       {/* Floating Notice Toast */}
       {notification && (
-        <div className="fixed top-20 right-5 z-50 flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-2xl animate-in slide-in-from-top-3">
-          <CheckCircle2 className="h-4 w-4" />
-          <span>{notification}</span>
+        <div
+          className={`fixed top-20 right-5 z-50 flex max-w-md items-start gap-2 rounded-xl px-5 py-3 text-sm font-bold shadow-2xl animate-in slide-in-from-top-3 ${
+            notification.error
+              ? "bg-destructive text-destructive-foreground"
+              : "bg-primary text-primary-foreground"
+          }`}
+        >
+          {notification.error ? (
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+          )}
+          <span>{notification.text}</span>
         </div>
       )}
 
@@ -257,13 +306,25 @@ function AdminPage() {
           </button>
         </div>
 
+        {dataError && (
+          <div className="mt-4 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs font-bold text-destructive">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>
+              İçerik veritabanına erişilemiyor: {dataError} — Sayfa yenilenip tekrar deneyin;
+              gerekirse sunucudaki SITE_CONTENT_DB_FILE ve /data birimi kontrol edilmeli.
+            </span>
+          </div>
+        )}
+
         {/* Tab 1: Tabldot Menü Yönetimi */}
         {activeTab === "tabldot" && (
           <TabldotManager
             fixMenu={fixMenu}
-            onSave={(updated) => {
-              updateFixMenu(updated);
-              showNotice("Günün tabldot menüsü başarıyla kaydedildi!");
+            onSave={async (updated) => {
+              saveNotice(
+                await updateFixMenu(updated),
+                "Günün tabldot menüsü veritabanına kaydedildi!",
+              );
             }}
           />
         )}
@@ -271,9 +332,11 @@ function AdminPage() {
         {activeTab === "broşür" && (
           <BrochureManager
             brochure={brochure}
-            onSave={(updated) => {
-              updateBrochure(updated);
-              showNotice("Fix Menü broşürü kaydedildi!");
+            onSave={async (updated) => {
+              saveNotice(
+                await updateBrochure(updated),
+                "Fix Menü broşürü veritabanına kaydedildi!",
+              );
             }}
           />
         )}
@@ -281,9 +344,11 @@ function AdminPage() {
         {activeTab === "hero" && (
           <HeroSliderManager
             slides={heroSlides}
-            onSave={(updated) => {
-              updateHeroSlides(updated);
-              showNotice("Hero slider görselleri güncellendi!");
+            onSave={async (updated) => {
+              saveNotice(
+                await updateHeroSlides(updated),
+                "Hero slider görselleri veritabanına kaydedildi!",
+              );
             }}
           />
         )}
@@ -292,9 +357,11 @@ function AdminPage() {
         {activeTab === "cesitler" && (
           <CategoriesManager
             categories={categories}
-            onSave={(updated) => {
-              updateCategories(updated);
-              showNotice("Yemek çeşitleri güncellendi!");
+            onSave={async (updated) => {
+              saveNotice(
+                await updateCategories(updated),
+                "Yemek çeşitleri veritabanına kaydedildi!",
+              );
             }}
           />
         )}
@@ -303,9 +370,11 @@ function AdminPage() {
         {activeTab === "yorumlar" && (
           <TestimonialsManager
             testimonials={testimonials}
-            onSave={(updated) => {
-              updateTestimonials(updated);
-              showNotice("Müşteri yorumları güncellendi!");
+            onSave={async (updated) => {
+              saveNotice(
+                await updateTestimonials(updated),
+                "Müşteri yorumları veritabanına kaydedildi!",
+              );
             }}
           />
         )}
@@ -316,14 +385,22 @@ function AdminPage() {
         {activeTab === "profil" && (
           <ProfileManager
             profile={profile}
-            onSave={(updated) => {
-              updateProfile(updated);
-              showNotice("Profil ve işletme bilgileri kaydedildi!");
+            onSave={async (updated) => {
+              saveNotice(
+                await updateProfile(updated),
+                "Profil ve işletme bilgileri veritabanına kaydedildi!",
+              );
             }}
-            onResetDefaults={() => {
-              if (window.confirm("Tüm verileri orijinal fabrika ayarlarına sıfırlamak istediğinize emin misiniz?")) {
-                resetToDefaults();
-                showNotice("Tüm veriler varsayılanlara sıfırlandı!");
+            onResetDefaults={async () => {
+              if (
+                window.confirm(
+                  "Tüm site içeriği (menü, katalog, yorumlar, profil) veritabanında varsayılanlara sıfırlanacak. Emin misiniz?",
+                )
+              ) {
+                saveNotice(
+                  await resetToDefaults(),
+                  "Tüm veriler veritabanında varsayılanlara sıfırlandı!",
+                );
               }
             }}
           />
@@ -375,7 +452,8 @@ function TabldotManager({
         <div>
           <h2 className="text-xl font-extrabold tracking-tight">Günün Tabldot Menüsü Düzenle</h2>
           <p className="text-xs text-muted-foreground">
-            Haftalık Fix Tabldot Menüsündeki günleri seçerek 4 çeşit yemeği ve açıklamayı düzenleyin.
+            Haftalık Fix Tabldot Menüsündeki günleri seçerek 4 çeşit yemeği ve açıklamayı
+            düzenleyin.
           </p>
         </div>
         <button
@@ -409,7 +487,10 @@ function TabldotManager({
       {/* Edit Form & Live Preview Grid */}
       <div className="grid gap-6 lg:grid-cols-12 items-start">
         {/* Form */}
-        <form onSubmit={handleSave} className="lg:col-span-7 rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+        <form
+          onSubmit={handleSave}
+          className="lg:col-span-7 rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4"
+        >
           <div className="flex items-center justify-between border-b border-border pb-3">
             <span className="font-extrabold text-base text-foreground">
               {selectedDay} Günü Menü Detayları
@@ -516,21 +597,27 @@ function TabldotManager({
               <div className="flex items-center gap-3 rounded-lg bg-card p-3 shadow-2xs">
                 <span className="text-base">🥣</span>
                 <div>
-                  <span className="block text-[10px] text-muted-foreground uppercase font-bold">1. Çorba</span>
+                  <span className="block text-[10px] text-muted-foreground uppercase font-bold">
+                    1. Çorba
+                  </span>
                   <span>{current.soup || "—"}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-lg bg-card p-3 shadow-2xs">
                 <span className="text-base">🥘</span>
                 <div>
-                  <span className="block text-[10px] text-muted-foreground uppercase font-bold">2. Ana Yemek</span>
+                  <span className="block text-[10px] text-muted-foreground uppercase font-bold">
+                    2. Ana Yemek
+                  </span>
                   <span>{current.main || "—"}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-lg bg-card p-3 shadow-2xs">
                 <span className="text-base">🍚</span>
                 <div>
-                  <span className="block text-[10px] text-muted-foreground uppercase font-bold">3. Pilav / Makarna</span>
+                  <span className="block text-[10px] text-muted-foreground uppercase font-bold">
+                    3. Pilav / Makarna
+                  </span>
                   <span>{current.side || "—"}</span>
                 </div>
               </div>
@@ -559,22 +646,26 @@ function BrochureManager({
   onSave: (updated: FixBrochure) => void;
 }) {
   const [form, setForm] = useState<FixBrochure>(brochure);
+  const [uploadState, setUploadState] = useState<{ busy: boolean; error: string | null }>({
+    busy: false,
+    error: null,
+  });
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      window.alert("Broşür görseli en fazla 2 MB olabilir.");
-      e.target.value = "";
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setForm((previous) => ({ ...previous, image: reader.result as string }));
-      }
-    };
-    reader.readAsDataURL(file);
+    setUploadState({ busy: true, error: null });
+    void uploadSiteImage(file)
+      .then((result) => {
+        if (!result.ok) {
+          setUploadState({ busy: false, error: result.error });
+          return;
+        }
+        // Sunucudaki dosya adresi veritabanına yazılır; tarayıcıda base64 tutulmaz.
+        setForm((previous) => ({ ...previous, image: result.url }));
+        setUploadState({ busy: false, error: null });
+      })
+      .catch(() => setUploadState({ busy: false, error: "Görsel yüklenemedi." }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -588,12 +679,15 @@ function BrochureManager({
         <div className="border-b border-border pb-3">
           <h2 className="text-xl font-extrabold tracking-tight">İş Yerlerine Fix Menü Broşürü</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Sitedeki broşür kartının başlığını, rozetini ve görselini düzenleyin. Görsel en fazla 2 MB olabilir.
+            Sitedeki broşür kartının başlığını, rozetini ve görselini düzenleyin. Görsel en fazla 2
+            MB olabilir.
           </p>
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-bold text-muted-foreground">Broşür Başlığı</label>
+          <label className="mb-1 block text-xs font-bold text-muted-foreground">
+            Broşür Başlığı
+          </label>
           <input
             type="text"
             value={form.title}
@@ -615,19 +709,30 @@ function BrochureManager({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-bold text-muted-foreground">Yeni Broşür Görseli</label>
+          <label className="mb-1 block text-xs font-bold text-muted-foreground">
+            Yeni Broşür Görseli
+          </label>
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={handleImageChange}
             className="block w-full rounded-xl border border-input bg-background px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-primary"
           />
-          <p className="mt-1 text-[11px] text-muted-foreground">JPG, PNG veya WebP • en fazla 2 MB</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            JPG, PNG veya WebP • en fazla 4 MB • görsel sunucuya kaydedilir
+          </p>
+          {uploadState.busy && (
+            <p className="mt-1 text-[11px] font-bold text-primary">Görsel sunucuya yükleniyor…</p>
+          )}
+          {uploadState.error && (
+            <p className="mt-1 text-[11px] font-bold text-destructive">{uploadState.error}</p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
+            disabled={uploadState.busy}
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow hover:bg-primary/90"
           >
             <Save className="h-4 w-4" /> Broşürü Kaydet
@@ -649,7 +754,9 @@ function BrochureManager({
         <p className="mb-3 text-sm font-extrabold text-primary">Canlı Önizleme</p>
         <div className="mx-auto max-w-sm rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-warm)]">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="min-w-0 break-words text-lg font-bold">{form.title || "Broşür Başlığı"}</h3>
+            <h3 className="min-w-0 break-words text-lg font-bold">
+              {form.title || "Broşür Başlığı"}
+            </h3>
             <span className="shrink-0 rounded-md bg-espresso px-2.5 py-1 text-xs font-bold text-espresso-foreground">
               {form.badge || "FİX"}
             </span>
@@ -674,31 +781,33 @@ function HeroSliderManager({
   onSave: (updated: HeroSlide[]) => void;
 }) {
   const [list, setList] = useState<HeroSlide[]>(slides);
+  const [uploading, setUploading] = useState(false);
 
-  const readImage = (file: File, onResult: (src: string) => void) => {
-    if (file.size > 2 * 1024 * 1024) {
-      window.alert("Hero görseli en fazla 2 MB olabilir.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") onResult(reader.result);
-    };
-    reader.readAsDataURL(file);
+  const applyUploaded = (file: File, onUrl: (url: string) => void) => {
+    setUploading(true);
+    void uploadSiteImage(file)
+      .then((result) => {
+        if (!result.ok) {
+          window.alert(result.error);
+          return;
+        }
+        onUrl(result.url);
+      })
+      .finally(() => setUploading(false));
   };
 
   const updateImage = (index: number, file: File | undefined) => {
     if (!file) return;
-    readImage(file, (src) => {
-      setList((previous) => previous.map((slide, slideIndex) => (
-        slideIndex === index ? { ...slide, src } : slide
-      )));
+    applyUploaded(file, (src) => {
+      setList((previous) =>
+        previous.map((slide, slideIndex) => (slideIndex === index ? { ...slide, src } : slide)),
+      );
     });
   };
 
   const addImage = (file: File | undefined) => {
     if (!file) return;
-    readImage(file, (src) => {
+    applyUploaded(file, (src) => {
       setList((previous) => [
         ...previous,
         {
@@ -711,9 +820,9 @@ function HeroSliderManager({
   };
 
   const updateAlt = (index: number, alt: string) => {
-    setList((previous) => previous.map((slide, slideIndex) => (
-      slideIndex === index ? { ...slide, alt } : slide
-    )));
+    setList((previous) =>
+      previous.map((slide, slideIndex) => (slideIndex === index ? { ...slide, alt } : slide)),
+    );
   };
 
   const removeSlide = (index: number) => {
@@ -744,7 +853,8 @@ function HeroSliderManager({
         <div>
           <h2 className="text-xl font-extrabold tracking-tight">Hero Slider Görselleri</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Ana sayfanın üst slider görsellerini ekleyin, alt metinlerini düzenleyin ve sıralarını değiştirin.
+            Ana sayfanın üst slider görsellerini ekleyin, alt metinlerini düzenleyin ve sıralarını
+            değiştirin.
           </p>
         </div>
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow hover:bg-primary/90">
@@ -763,28 +873,65 @@ function HeroSliderManager({
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {list.map((slide, index) => (
-          <article key={slide.id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <article
+            key={slide.id}
+            className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+          >
             <div className="aspect-square overflow-hidden bg-muted">
               <img src={slide.src} alt={slide.alt} className="h-full w-full object-cover" />
             </div>
             <div className="space-y-3 p-4">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-primary">Görsel {index + 1}</span>
+                <span className="text-xs font-extrabold uppercase tracking-wider text-primary">
+                  Görsel {index + 1}
+                </span>
                 <div className="flex gap-1">
-                  <button type="button" onClick={() => moveSlide(index, -1)} disabled={index === 0} className="rounded-lg border border-input px-2 py-1 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40">Yukarı</button>
-                  <button type="button" onClick={() => moveSlide(index, 1)} disabled={index === list.length - 1} className="rounded-lg border border-input px-2 py-1 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40">Aşağı</button>
+                  <button
+                    type="button"
+                    onClick={() => moveSlide(index, -1)}
+                    disabled={index === 0}
+                    className="rounded-lg border border-input px-2 py-1 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Yukarı
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveSlide(index, 1)}
+                    disabled={index === list.length - 1}
+                    className="rounded-lg border border-input px-2 py-1 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Aşağı
+                  </button>
                 </div>
               </div>
               <label className="block text-xs font-bold text-muted-foreground">
                 Alternatif metin
-                <input type="text" value={slide.alt} onChange={(event) => updateAlt(index, event.target.value)} className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-medium" placeholder="Görseli açıklayan kısa metin" />
+                <input
+                  type="text"
+                  value={slide.alt}
+                  onChange={(event) => updateAlt(index, event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-medium"
+                  placeholder="Görseli açıklayan kısa metin"
+                />
               </label>
               <div className="flex flex-wrap gap-2">
                 <label className="inline-flex cursor-pointer items-center rounded-xl border border-input bg-background px-3 py-2 text-xs font-bold hover:border-primary hover:text-primary">
                   Görseli Değiştir
-                  <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => { updateImage(index, event.target.files?.[0]); event.target.value = ""; }} />
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    onChange={(event) => {
+                      updateImage(index, event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
                 </label>
-                <button type="button" onClick={() => removeSlide(index)} className="inline-flex items-center gap-1 rounded-xl border border-destructive/30 px-3 py-2 text-xs font-bold text-destructive hover:bg-destructive/10">
+                <button
+                  type="button"
+                  onClick={() => removeSlide(index)}
+                  className="inline-flex items-center gap-1 rounded-xl border border-destructive/30 px-3 py-2 text-xs font-bold text-destructive hover:bg-destructive/10"
+                >
                   <Trash2 className="h-3.5 w-3.5" /> Sil
                 </button>
               </div>
@@ -794,14 +941,28 @@ function HeroSliderManager({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => onSave(list)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow hover:bg-primary/90">
+        <button
+          type="button"
+          onClick={() => onSave(list)}
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow hover:bg-primary/90"
+        >
           <Save className="h-4 w-4" /> Değişiklikleri Kaydet
         </button>
-        <button type="button" onClick={() => { setList(INITIAL_HERO_SLIDES); onSave(INITIAL_HERO_SLIDES); }} className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground">
+        <button
+          type="button"
+          onClick={() => {
+            setList(INITIAL_HERO_SLIDES);
+            onSave(INITIAL_HERO_SLIDES);
+          }}
+          className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+        >
           <RotateCcw className="h-4 w-4" /> Varsayılanlara Dön
         </button>
       </div>
-      <p className="text-[11px] text-muted-foreground">JPG, PNG veya WebP • Her görsel en fazla 2 MB olabilir.</p>
+      <p className="text-[11px] text-muted-foreground">
+        JPG, PNG veya WebP • her görsel en fazla 4 MB • yüklenen görseller sunucuda saklanır.
+        {uploading ? " Görsel yükleniyor…" : ""}
+      </p>
     </div>
   );
 }
@@ -856,10 +1017,10 @@ function CategoriesManager({
         ? {
             ...category,
             items: category.items.map((dish, index) =>
-              index === editingDishIndex ? editingDishName.trim() : dish
+              index === editingDishIndex ? editingDishName.trim() : dish,
             ),
           }
-        : category
+        : category,
     );
     setList(updated);
     onSave(updated);
@@ -958,7 +1119,9 @@ function CategoriesManager({
           </div>
           <div className="grid gap-4 sm:grid-cols-4">
             <div className="sm:col-span-1">
-              <label className="block text-xs font-bold text-muted-foreground mb-1">Simge (Emoji)</label>
+              <label className="block text-xs font-bold text-muted-foreground mb-1">
+                Simge (Emoji)
+              </label>
               <input
                 type="text"
                 value={newCategoryIcon}
@@ -968,7 +1131,9 @@ function CategoriesManager({
               />
             </div>
             <div className="sm:col-span-3">
-              <label className="block text-xs font-bold text-muted-foreground mb-1">Kategori Başlığı</label>
+              <label className="block text-xs font-bold text-muted-foreground mb-1">
+                Kategori Başlığı
+              </label>
               <input
                 type="text"
                 value={newCategoryTitle}
@@ -1022,7 +1187,9 @@ function CategoriesManager({
               <span className="text-3xl">{currentCat.icon}</span>
               <div>
                 <h3 className="text-xl font-extrabold">{currentCat.title}</h3>
-                <p className="text-xs text-muted-foreground">Toplam {currentCat.items.length} çeşit yemek kayıtlı</p>
+                <p className="text-xs text-muted-foreground">
+                  Toplam {currentCat.items.length} çeşit yemek kayıtlı
+                </p>
               </div>
             </div>
 
@@ -1062,7 +1229,10 @@ function CategoriesManager({
                 className="group flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm font-semibold transition hover:bg-card hover:border-primary/40 hover:shadow-2xs"
               >
                 {editingDishIndex === idx ? (
-                  <form onSubmit={handleSaveDish} className="flex min-w-0 flex-1 items-center gap-2">
+                  <form
+                    onSubmit={handleSaveDish}
+                    className="flex min-w-0 flex-1 items-center gap-2"
+                  >
                     <input
                       type="text"
                       value={editingDishName}
@@ -1185,9 +1355,7 @@ function TestimonialsManager({
 
     if (editingId) {
       updated = list.map((t) =>
-        t.id === editingId
-          ? { ...t, name, role, company, comment, rating }
-          : t
+        t.id === editingId ? { ...t, name, role, company, comment, rating } : t,
       );
     } else {
       const newReview: Testimonial = {
@@ -1219,7 +1387,9 @@ function TestimonialsManager({
     <div className="mt-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-extrabold tracking-tight">Öğle Molalarına Lezzet Katan Yorumlar</h2>
+          <h2 className="text-xl font-extrabold tracking-tight">
+            Öğle Molalarına Lezzet Katan Yorumlar
+          </h2>
           <p className="text-xs text-muted-foreground">
             Web sitesinde yer alan kurumsal referans ve müşteri değerlendirmelerini yönetin.
           </p>
@@ -1259,7 +1429,9 @@ function TestimonialsManager({
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <label className="block text-xs font-bold text-muted-foreground mb-1">Müşteri Adı Soyadı</label>
+              <label className="block text-xs font-bold text-muted-foreground mb-1">
+                Müşteri Adı Soyadı
+              </label>
               <input
                 type="text"
                 value={name}
@@ -1270,7 +1442,9 @@ function TestimonialsManager({
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-muted-foreground mb-1">Görevi / Pozisyonu</label>
+              <label className="block text-xs font-bold text-muted-foreground mb-1">
+                Görevi / Pozisyonu
+              </label>
               <input
                 type="text"
                 value={role}
@@ -1280,7 +1454,9 @@ function TestimonialsManager({
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-muted-foreground mb-1">Firma / Kurum Adı</label>
+              <label className="block text-xs font-bold text-muted-foreground mb-1">
+                Firma / Kurum Adı
+              </label>
               <input
                 type="text"
                 value={company}
@@ -1306,12 +1482,16 @@ function TestimonialsManager({
                   ★
                 </button>
               ))}
-              <span className="text-xs font-bold ml-2 text-muted-foreground">{rating} / 5 Yıldız</span>
+              <span className="text-xs font-bold ml-2 text-muted-foreground">
+                {rating} / 5 Yıldız
+              </span>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-muted-foreground mb-1">Yorum Metni</label>
+            <label className="block text-xs font-bold text-muted-foreground mb-1">
+              Yorum Metni
+            </label>
             <textarea
               rows={3}
               value={comment}
@@ -1345,7 +1525,9 @@ function TestimonialsManager({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 text-amber-500">
                   {Array.from({ length: t.rating || 5 }).map((_, i) => (
-                    <span key={i} className="text-sm">★</span>
+                    <span key={i} className="text-sm">
+                      ★
+                    </span>
                   ))}
                 </div>
                 <div className="flex items-center gap-2">
@@ -1375,7 +1557,10 @@ function TestimonialsManager({
 
             <div className="mt-6 flex items-center gap-3 border-t border-border pt-4">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent font-extrabold text-xs text-primary">
-                {t.name.split(" ").map((n) => n[0]).join("")}
+                {t.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{t.name}</p>
@@ -1443,9 +1628,12 @@ function ProfileManager({
   return (
     <div className="mt-6 space-y-8">
       <div>
-        <h2 className="text-xl font-extrabold tracking-tight">Yönetici Profili &amp; İşletme Bilgileri</h2>
+        <h2 className="text-xl font-extrabold tracking-tight">
+          Yönetici Profili &amp; İşletme Bilgileri
+        </h2>
         <p className="text-xs text-muted-foreground">
-          Hesap bilgilerinizi, şifrenizi ve sitede görünen işletme adres/iletişim bilgilerini buradan güncelleyin.
+          Hesap bilgilerinizi, şifrenizi ve sitede görünen işletme adres/iletişim bilgilerini
+          buradan güncelleyin.
         </p>
       </div>
 
@@ -1453,7 +1641,10 @@ function ProfileManager({
         {/* Profile Card & Info */}
         <div className="lg:col-span-4 rounded-2xl border border-border bg-card p-6 shadow-sm text-center">
           <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 ring-4 ring-primary/20 text-3xl font-black text-primary">
-            {form.fullName.split(" ").map((n) => n[0]).join("")}
+            {form.fullName
+              .split(" ")
+              .map((n) => n[0])
+              .join("")}
           </div>
           <h3 className="mt-4 text-lg font-extrabold">{form.fullName}</h3>
           <p className="text-xs font-semibold text-primary">{form.roleTitle}</p>
@@ -1500,7 +1691,9 @@ function ProfileManager({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">Ad Soyad</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Ad Soyad
+                </label>
                 <input
                   type="text"
                   value={form.fullName}
@@ -1511,7 +1704,9 @@ function ProfileManager({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">Göreviniz / Unvan</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Göreviniz / Unvan
+                </label>
                 <input
                   type="text"
                   value={form.roleTitle}
@@ -1524,7 +1719,9 @@ function ProfileManager({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">E-Posta Adresi</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  E-Posta Adresi
+                </label>
                 <input
                   type="email"
                   value={form.email}
@@ -1535,7 +1732,9 @@ function ProfileManager({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">İşletme Adı</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  İşletme Adı
+                </label>
                 <input
                   type="text"
                   value={form.businessName}
@@ -1548,7 +1747,9 @@ function ProfileManager({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">1. Telefon (WhatsApp)</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  1. Telefon (WhatsApp)
+                </label>
                 <input
                   type="text"
                   value={form.phone}
@@ -1559,7 +1760,9 @@ function ProfileManager({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">2. Telefon</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  2. Telefon
+                </label>
                 <input
                   type="text"
                   value={form.phone2}
@@ -1570,7 +1773,9 @@ function ProfileManager({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-muted-foreground mb-1">İşletme Adresi</label>
+              <label className="block text-xs font-bold text-muted-foreground mb-1">
+                İşletme Adresi
+              </label>
               <textarea
                 rows={2}
                 value={form.address}
@@ -1609,7 +1814,9 @@ function ProfileManager({
 
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">Mevcut Şifre</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Mevcut Şifre
+                </label>
                 <input
                   type="password"
                   value={currentPass}
@@ -1620,7 +1827,9 @@ function ProfileManager({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">Yeni Şifre</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Yeni Şifre
+                </label>
                 <input
                   type="password"
                   value={newPass}
@@ -1631,7 +1840,9 @@ function ProfileManager({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">Yeni Şifre (Tekrar)</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Yeni Şifre (Tekrar)
+                </label>
                 <input
                   type="password"
                   value={confirmPass}
@@ -1656,7 +1867,6 @@ function ProfileManager({
     </div>
   );
 }
-
 
 interface SmtpAdminForm {
   host: string;
@@ -1694,8 +1904,11 @@ function SmtpSettingsManager() {
     let active = true;
     const load = async () => {
       try {
-        const response = await fetch("/api/admin/smtp", { credentials: "same-origin", cache: "no-store" });
-        const body = await response.json().catch(() => null) as {
+        const response = await fetch("/api/admin/smtp", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        const body = (await response.json().catch(() => null)) as {
           settings?: Partial<SmtpAdminForm>;
           error?: string;
         } | null;
@@ -1713,13 +1926,16 @@ function SmtpSettingsManager() {
           setNotice({ text: body?.error || "SMTP ayarları yüklenemedi.", error: true });
         }
       } catch {
-        if (active) setNotice({ text: "Sunucuya ulaşılamadı. SMTP panelini yeniden yükleyin.", error: true });
+        if (active)
+          setNotice({ text: "Sunucuya ulaşılamadı. SMTP panelini yeniden yükleyin.", error: true });
       } finally {
         if (active) setIsLoading(false);
       }
     };
     void load();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
   const updateField = <K extends keyof SmtpAdminForm>(key: K, value: SmtpAdminForm[K]) => {
@@ -1747,7 +1963,7 @@ function SmtpSettingsManager() {
           mailTo: form.mailTo,
         }),
       });
-      const body = await response.json().catch(() => null) as {
+      const body = (await response.json().catch(() => null)) as {
         error?: string;
         message?: string;
         fieldErrors?: Record<string, string>;
@@ -1784,9 +2000,14 @@ function SmtpSettingsManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const body = await response.json().catch(() => null) as { error?: string; message?: string } | null;
+      const body = (await response.json().catch(() => null)) as {
+        error?: string;
+        message?: string;
+      } | null;
       setNotice({
-        text: response.ok ? (body?.message || "Test e-postası gönderildi.") : (body?.error || "Test e-postası gönderilemedi."),
+        text: response.ok
+          ? body?.message || "Test e-postası gönderildi."
+          : body?.error || "Test e-postası gönderilemedi.",
         error: !response.ok,
       });
     } catch {
@@ -1796,77 +2017,186 @@ function SmtpSettingsManager() {
     }
   };
 
-  const inputClass = "mt-1.5 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30";
+  const inputClass =
+    "mt-1.5 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30";
 
   return (
     <section className="mt-6 space-y-6">
       <div>
         <h2 className="text-xl font-extrabold tracking-tight">SMTP E-posta Ayarları</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          İletişim formu postaları ve bağlantı testi bu SMTP hesabını kullanır. Parola kaydedildikten sonra tekrar görüntülenemez.
+          İletişim formu postaları ve bağlantı testi bu SMTP hesabını kullanır. Parola
+          kaydedildikten sonra tekrar görüntülenemez.
         </p>
       </div>
 
       {notice && (
-        <div role="status" className={`rounded-xl border px-4 py-3 text-sm font-semibold ${notice.error ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-primary/20 bg-primary/10 text-primary"}`}>
+        <div
+          role="status"
+          className={`rounded-xl border px-4 py-3 text-sm font-semibold ${notice.error ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-primary/20 bg-primary/10 text-primary"}`}
+        >
           {notice.text}
         </div>
       )}
 
-      <form onSubmit={handleSave} className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-5">
+      <form
+        onSubmit={handleSave}
+        className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-5"
+      >
         {isLoading && <p className="text-sm text-muted-foreground">SMTP ayarları yükleniyor...</p>}
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-xs font-bold text-muted-foreground">SMTP sunucusu
-            <input value={form.host} onChange={(event) => updateField("host", event.target.value)} className={inputClass} placeholder="smtp.ornek.com" maxLength={253} autoComplete="off" required />
-            {fieldErrors["host"] && <span className="mt-1 block text-xs text-destructive">{fieldErrors["host"]}</span>}
+          <label className="block text-xs font-bold text-muted-foreground">
+            SMTP sunucusu
+            <input
+              value={form.host}
+              onChange={(event) => updateField("host", event.target.value)}
+              className={inputClass}
+              placeholder="smtp.ornek.com"
+              maxLength={253}
+              autoComplete="off"
+              required
+            />
+            {fieldErrors["host"] && (
+              <span className="mt-1 block text-xs text-destructive">{fieldErrors["host"]}</span>
+            )}
           </label>
-          <label className="block text-xs font-bold text-muted-foreground">Port
-            <input type="number" min={1} max={65535} step={1} value={form.port} onChange={(event) => updateField("port", event.target.value)} className={inputClass} placeholder="587" required />
-            {fieldErrors["port"] && <span className="mt-1 block text-xs text-destructive">{fieldErrors["port"]}</span>}
+          <label className="block text-xs font-bold text-muted-foreground">
+            Port
+            <input
+              type="number"
+              min={1}
+              max={65535}
+              step={1}
+              value={form.port}
+              onChange={(event) => updateField("port", event.target.value)}
+              className={inputClass}
+              placeholder="587"
+              required
+            />
+            {fieldErrors["port"] && (
+              <span className="mt-1 block text-xs text-destructive">{fieldErrors["port"]}</span>
+            )}
           </label>
         </div>
 
         <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4 text-sm">
-          <input type="checkbox" checked={form.secure} onChange={(event) => updateField("secure", event.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
-          <span><strong>SSL/TLS bağlantısı</strong><span className="mt-1 block text-xs text-muted-foreground">Genellikle 465 portunda açık; 587 portunda kapalı seçilir ve STARTTLS zorunlu tutulur.</span></span>
+          <input
+            type="checkbox"
+            checked={form.secure}
+            onChange={(event) => updateField("secure", event.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-primary"
+          />
+          <span>
+            <strong>SSL/TLS bağlantısı</strong>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              Genellikle 465 portunda açık; 587 portunda kapalı seçilir ve STARTTLS zorunlu tutulur.
+            </span>
+          </span>
         </label>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-xs font-bold text-muted-foreground">SMTP kullanıcı adı
-            <input value={form.user} onChange={(event) => updateField("user", event.target.value)} className={inputClass} maxLength={254} autoComplete="username" required />
-            {fieldErrors["user"] && <span className="mt-1 block text-xs text-destructive">{fieldErrors["user"]}</span>}
+          <label className="block text-xs font-bold text-muted-foreground">
+            SMTP kullanıcı adı
+            <input
+              value={form.user}
+              onChange={(event) => updateField("user", event.target.value)}
+              className={inputClass}
+              maxLength={254}
+              autoComplete="username"
+              required
+            />
+            {fieldErrors["user"] && (
+              <span className="mt-1 block text-xs text-destructive">{fieldErrors["user"]}</span>
+            )}
           </label>
-          <label className="block text-xs font-bold text-muted-foreground">SMTP parolası
-            <input type="password" value={form.password} onChange={(event) => updateField("password", event.target.value)} className={inputClass} autoComplete="new-password" maxLength={1024} placeholder={form.hasPassword ? "Kayıtlı parola korunuyor; değiştirmek için yeni parola girin" : "İlk kurulumda zorunludur"} />
-            <span className="mt-1 block text-[11px] font-normal text-muted-foreground">{form.hasPassword ? "Parola sunucuda şifreli saklanır; boş bırakırsanız mevcut parola korunur." : "Parola boşluk dahil aynen saklanır, istemciye geri verilmez."}</span>
-            {fieldErrors["password"] && <span className="mt-1 block text-xs text-destructive">{fieldErrors["password"]}</span>}
+          <label className="block text-xs font-bold text-muted-foreground">
+            SMTP parolası
+            <input
+              type="password"
+              value={form.password}
+              onChange={(event) => updateField("password", event.target.value)}
+              className={inputClass}
+              autoComplete="new-password"
+              maxLength={1024}
+              placeholder={
+                form.hasPassword
+                  ? "Kayıtlı parola korunuyor; değiştirmek için yeni parola girin"
+                  : "İlk kurulumda zorunludur"
+              }
+            />
+            <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
+              {form.hasPassword
+                ? "Parola sunucuda şifreli saklanır; boş bırakırsanız mevcut parola korunur."
+                : "Parola boşluk dahil aynen saklanır, istemciye geri verilmez."}
+            </span>
+            {fieldErrors["password"] && (
+              <span className="mt-1 block text-xs text-destructive">{fieldErrors["password"]}</span>
+            )}
           </label>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-xs font-bold text-muted-foreground">Gönderen e-posta (MAIL_FROM)
-            <input type="email" value={form.mailFrom} onChange={(event) => updateField("mailFrom", event.target.value)} className={inputClass} maxLength={254} autoComplete="email" required />
-            {fieldErrors["mailFrom"] && <span className="mt-1 block text-xs text-destructive">{fieldErrors["mailFrom"]}</span>}
+          <label className="block text-xs font-bold text-muted-foreground">
+            Gönderen e-posta (MAIL_FROM)
+            <input
+              type="email"
+              value={form.mailFrom}
+              onChange={(event) => updateField("mailFrom", event.target.value)}
+              className={inputClass}
+              maxLength={254}
+              autoComplete="email"
+              required
+            />
+            {fieldErrors["mailFrom"] && (
+              <span className="mt-1 block text-xs text-destructive">{fieldErrors["mailFrom"]}</span>
+            )}
           </label>
-          <label className="block text-xs font-bold text-muted-foreground">Alıcı e-posta (MAIL_TO)
-            <input type="email" value={form.mailTo} onChange={(event) => updateField("mailTo", event.target.value)} className={inputClass} maxLength={254} autoComplete="email" required />
-            {fieldErrors["mailTo"] && <span className="mt-1 block text-xs text-destructive">{fieldErrors["mailTo"]}</span>}
+          <label className="block text-xs font-bold text-muted-foreground">
+            Alıcı e-posta (MAIL_TO)
+            <input
+              type="email"
+              value={form.mailTo}
+              onChange={(event) => updateField("mailTo", event.target.value)}
+              className={inputClass}
+              maxLength={254}
+              autoComplete="email"
+              required
+            />
+            {fieldErrors["mailTo"] && (
+              <span className="mt-1 block text-xs text-destructive">{fieldErrors["mailTo"]}</span>
+            )}
           </label>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
-          <button type="submit" disabled={isSaving || isLoading} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
-            <Save className="h-4 w-4" />{isSaving ? "Kaydediliyor..." : "SMTP Ayarlarını Kaydet"}
+          <button
+            type="submit"
+            disabled={isSaving || isLoading}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Save className="h-4 w-4" />
+            {isSaving ? "Kaydediliyor..." : "SMTP Ayarlarını Kaydet"}
           </button>
-          <button type="button" onClick={() => void handleTest()} disabled={isTesting || isSaving || !form.configured} className="inline-flex items-center gap-2 rounded-xl border border-input bg-card px-5 py-3 text-sm font-bold transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50">
-            <Mail className="h-4 w-4" />{isTesting ? "Test gönderiliyor..." : "Test E-postası Gönder"}
+          <button
+            type="button"
+            onClick={() => void handleTest()}
+            disabled={isTesting || isSaving || !form.configured}
+            className="inline-flex items-center gap-2 rounded-xl border border-input bg-card px-5 py-3 text-sm font-bold transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Mail className="h-4 w-4" />
+            {isTesting ? "Test gönderiliyor..." : "Test E-postası Gönder"}
           </button>
-          {!form.configured && <span className="text-xs text-muted-foreground">Test için önce ayarları kaydedin.</span>}
+          {!form.configured && (
+            <span className="text-xs text-muted-foreground">Test için önce ayarları kaydedin.</span>
+          )}
         </div>
       </form>
 
       <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-xs leading-relaxed text-muted-foreground">
-        Güvenlik: SMTP parolası sunucuda AES-256-GCM ile şifrelenir. Sunucu kurulumu için şifreleme anahtarı gerekir; anahtarı ve kalıcı <code>/data</code> birimini birlikte güvenli yedekleyin. Doğrudan SMTP gönderimi mevcut Cloudflare Worker hedefinde çalışmaz; uygulama Node.js sunucusunda çalıştırılmalıdır.
+        Güvenlik: SMTP parolası sunucuda AES-256-GCM ile şifrelenir. Sunucu kurulumu için şifreleme
+        anahtarı gerekir; anahtarı ve kalıcı <code>/data</code> birimini birlikte güvenli
+        yedekleyin. Doğrudan SMTP gönderimi mevcut Cloudflare Worker hedefinde çalışmaz; uygulama
+        Node.js sunucusunda çalıştırılmalıdır.
       </div>
     </section>
   );

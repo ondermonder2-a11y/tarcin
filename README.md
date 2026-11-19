@@ -27,3 +27,8 @@ npm run dev
 - TypeScript
 - React
 - Tailwind CSS
+
+## Veri katmanı
+
+Admin paneli → sunucu API'si → veritabanı → ana sayfa akışının tamamı, uç nokta listesi,
+ortam değişkenleri ve doğrulama komutları için: [VERI-MIMARISI.md](./VERI-MIMARISI.md).

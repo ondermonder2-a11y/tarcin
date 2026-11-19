@@ -13,8 +13,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ProfilRouteImport } from './routes/profil'
 import { Route as ApiContactRouteImport } from './routes/api/contact'
+import { Route as ApiContentRouteImport } from './routes/api/content'
+import { Route as ApiAdminContentRouteImport } from './routes/api/admin/content'
+import { Route as ApiAdminContentResetRouteImport } from './routes/api/admin/content-reset'
+import { Route as ApiAdminMediaRouteImport } from './routes/api/admin/media'
 import { Route as ApiAdminSessionRouteImport } from './routes/api/admin/session'
 import { Route as ApiAdminSmtpRouteImport } from './routes/api/admin/smtp'
+import { Route as ApiMediaNameRouteImport } from './routes/api/media/$name'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -36,6 +41,26 @@ const ApiContactRoute = ApiContactRouteImport.update({
   path: '/api/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiContentRoute = ApiContentRouteImport.update({
+  id: '/api/content',
+  path: '/api/content',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminContentRoute = ApiAdminContentRouteImport.update({
+  id: '/api/admin/content',
+  path: '/api/admin/content',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminContentResetRoute = ApiAdminContentResetRouteImport.update({
+  id: '/api/admin/content-reset',
+  path: '/api/admin/content-reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminMediaRoute = ApiAdminMediaRouteImport.update({
+  id: '/api/admin/media',
+  path: '/api/admin/media',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminSessionRoute = ApiAdminSessionRouteImport.update({
   id: '/api/admin/session',
   path: '/api/admin/session',
@@ -46,22 +71,37 @@ const ApiAdminSmtpRoute = ApiAdminSmtpRouteImport.update({
   path: '/api/admin/smtp',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMediaNameRoute = ApiMediaNameRouteImport.update({
+  id: '/api/media/$name',
+  path: '/api/media/$name',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/profil': typeof ProfilRoute
   '/api/contact': typeof ApiContactRoute
+  '/api/content': typeof ApiContentRoute
+  '/api/admin/content': typeof ApiAdminContentRoute
+  '/api/admin/content-reset': typeof ApiAdminContentResetRoute
+  '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/session': typeof ApiAdminSessionRoute
   '/api/admin/smtp': typeof ApiAdminSmtpRoute
+  '/api/media/$name': typeof ApiMediaNameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/profil': typeof ProfilRoute
   '/api/contact': typeof ApiContactRoute
+  '/api/content': typeof ApiContentRoute
+  '/api/admin/content': typeof ApiAdminContentRoute
+  '/api/admin/content-reset': typeof ApiAdminContentResetRoute
+  '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/session': typeof ApiAdminSessionRoute
   '/api/admin/smtp': typeof ApiAdminSmtpRoute
+  '/api/media/$name': typeof ApiMediaNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,8 +109,13 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/profil': typeof ProfilRoute
   '/api/contact': typeof ApiContactRoute
+  '/api/content': typeof ApiContentRoute
+  '/api/admin/content': typeof ApiAdminContentRoute
+  '/api/admin/content-reset': typeof ApiAdminContentResetRoute
+  '/api/admin/media': typeof ApiAdminMediaRoute
   '/api/admin/session': typeof ApiAdminSessionRoute
   '/api/admin/smtp': typeof ApiAdminSmtpRoute
+  '/api/media/$name': typeof ApiMediaNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -79,24 +124,39 @@ export interface FileRouteTypes {
     | '/admin'
     | '/profil'
     | '/api/contact'
+    | '/api/content'
+    | '/api/admin/content'
+    | '/api/admin/content-reset'
+    | '/api/admin/media'
     | '/api/admin/session'
     | '/api/admin/smtp'
+    | '/api/media/$name'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/profil'
     | '/api/contact'
+    | '/api/content'
+    | '/api/admin/content'
+    | '/api/admin/content-reset'
+    | '/api/admin/media'
     | '/api/admin/session'
     | '/api/admin/smtp'
+    | '/api/media/$name'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/profil'
     | '/api/contact'
+    | '/api/content'
+    | '/api/admin/content'
+    | '/api/admin/content-reset'
+    | '/api/admin/media'
     | '/api/admin/session'
     | '/api/admin/smtp'
+    | '/api/media/$name'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -104,8 +164,13 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ProfilRoute: typeof ProfilRoute
   ApiContactRoute: typeof ApiContactRoute
+  ApiContentRoute: typeof ApiContentRoute
+  ApiAdminContentRoute: typeof ApiAdminContentRoute
+  ApiAdminContentResetRoute: typeof ApiAdminContentResetRoute
+  ApiAdminMediaRoute: typeof ApiAdminMediaRoute
   ApiAdminSessionRoute: typeof ApiAdminSessionRoute
   ApiAdminSmtpRoute: typeof ApiAdminSmtpRoute
+  ApiMediaNameRoute: typeof ApiMediaNameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -138,6 +203,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/content': {
+      id: '/api/content'
+      path: '/api/content'
+      fullPath: '/api/content'
+      preLoaderRoute: typeof ApiContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/content': {
+      id: '/api/admin/content'
+      path: '/api/admin/content'
+      fullPath: '/api/admin/content'
+      preLoaderRoute: typeof ApiAdminContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/content-reset': {
+      id: '/api/admin/content-reset'
+      path: '/api/admin/content-reset'
+      fullPath: '/api/admin/content-reset'
+      preLoaderRoute: typeof ApiAdminContentResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/media': {
+      id: '/api/admin/media'
+      path: '/api/admin/media'
+      fullPath: '/api/admin/media'
+      preLoaderRoute: typeof ApiAdminMediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/session': {
       id: '/api/admin/session'
       path: '/api/admin/session'
@@ -152,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSmtpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/media/$name': {
+      id: '/api/media/$name'
+      path: '/api/media/$name'
+      fullPath: '/api/media/$name'
+      preLoaderRoute: typeof ApiMediaNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -160,8 +260,13 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ProfilRoute: ProfilRoute,
   ApiContactRoute: ApiContactRoute,
+  ApiContentRoute: ApiContentRoute,
+  ApiAdminContentRoute: ApiAdminContentRoute,
+  ApiAdminContentResetRoute: ApiAdminContentResetRoute,
+  ApiAdminMediaRoute: ApiAdminMediaRoute,
   ApiAdminSessionRoute: ApiAdminSessionRoute,
   ApiAdminSmtpRoute: ApiAdminSmtpRoute,
+  ApiMediaNameRoute: ApiMediaNameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
