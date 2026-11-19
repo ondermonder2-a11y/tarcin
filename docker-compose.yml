@@ -1,4 +1,4 @@
-services:
+﻿services:
   web:
     build:
       context: .
@@ -7,7 +7,7 @@ services:
     container_name: tarcinyemek
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3013:3000"
     environment:
       NODE_ENV: development
       PORT: "3000"
@@ -18,7 +18,7 @@ services:
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:-}
       SMTP_SETTINGS_ENCRYPTION_KEY: ${SMTP_SETTINGS_ENCRYPTION_KEY:-}
       SMTP_SETTINGS_FILE: /data/smtp-settings.enc
-      # Site içeriği veritabanı (admin kayıtları buraya yazılır, /data kalıcı biriminde).
+      # Site iÃ§eriÄŸi veritabanÄ± (admin kayÄ±tlarÄ± buraya yazÄ±lÄ±r, /data kalÄ±cÄ± biriminde).
       SITE_CONTENT_DB_FILE: ${SITE_CONTENT_DB_FILE:-/data/site-content.json}
       SITE_MEDIA_DIR: ${SITE_MEDIA_DIR:-/data/media}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -35,3 +35,5 @@ services:
 
 volumes:
   tarcin_mail_data:
+
+
