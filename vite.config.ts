@@ -22,6 +22,9 @@ export default defineConfig({
   },
   vite: {
     server: {
+      // Nginx Proxy Manager domain üzerinden Vite dev server'a yönlendiriyor.
+      // IP/localhost erişimi de geliştirme ve sağlık kontrolleri için açık kalır.
+      allowedHosts: ["tarcinyemek.com", "www.tarcinyemek.com"],
       watch: {
         usePolling: true,
       },
